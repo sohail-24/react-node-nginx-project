@@ -1,29 +1,21 @@
 import React, { useState } from "react";
 
 function App() {
-  // 🔹 Backend health
+  // ===============================
+  // STATE
+  // ===============================
   const [backendStatus, setBackendStatus] = useState("UNKNOWN");
   const [backendMessage, setBackendMessage] = useState("");
 
-  // 🔹 Login state
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginResult, setLoginResult] = useState("");
 
-  // 🔹 Health check
-  const checkBackend = async () => {
-    try {
-      const res = await fetch("/api/health");
-      const data = await res.json();
-      setBackendStatus(data.status);
-      setBackendMessage(data.message);
-    } catch (error) {
-      setBackendStatus("DOWN");
-      setBackendMessage("Backend not reachable");
-    }
-  };
+  const [token, setToken] = useState(null);
 
-  // 🔹 Login API call
+  // ===============================
+  // LOGIN
+  // ===============================
   const login = async () => {
     setLoginResult("Checking credentials...");
 
@@ -37,12 +29,45 @@ function App() {
       const data = await res.json();
 
       if (res.ok) {
-        setLoginResult(`🟢 ${data.message} (Role: ${data.user.role})`);
+        setToken(data.token);
+        setLoginResult("🟢 Login successful");
       } else {
         setLoginResult(`🔴 ${data.message}`);
       }
     } catch (error) {
       setLoginResult("🔴 Backend not reachable");
+    }
+  };
+
+  // ===============================
+  // BACKEND HEALTH (PROTECTED)
+  // ===============================
+  const checkBackend = async () => {
+    if (!token) {
+      setBackendStatus("DOWN");
+      setBackendMessage("Please login first");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/health", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setBackendStatus("OK");
+        setBackendMessage(data.message);
+      } else {
+        setBackendStatus("DOWN");
+        setBackendMessage(data.message);
+      }
+    } catch (error) {
+      setBackendStatus("DOWN");
+      setBackendMessage("Backend not reachable");
     }
   };
 
@@ -93,7 +118,7 @@ function App() {
         </div>
       </section>
 
-      {/* 🔐 LOGIN SECTION (ADDED) */}
+      {/* LOGIN */}
       <section style={styles.login}>
         <h3>🔐 Login</h3>
 
@@ -121,7 +146,7 @@ function App() {
         )}
       </section>
 
-      {/* 🔗 BACKEND HEALTH */}
+      {/* BACKEND HEALTH */}
       <section style={styles.backend}>
         <h3>🔗 Backend Connection Status</h3>
 
@@ -162,6 +187,9 @@ function App() {
   );
 }
 
+// ===============================
+// STYLES (UNCHANGED)
+// ===============================
 const styles = {
   page: {
     minHeight: "100vh",
